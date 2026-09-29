@@ -1,0 +1,35 @@
+name: Sync to Gitee
+
+on:
+  push:
+    branches:
+      - main  # 如果是 master 請自行修改
+  release:
+    types: [published] # 未來發布新版本時自動觸發
+  workflow_dispatch: # 👈 允許你在網頁上手動點擊按鈕，強制全面同步
+
+jobs:
+  repo-sync:
+    runs-on: ubuntu-latest
+    steps:
+      # 1. 完整下載 GitHub 專案與所有 Git 紀錄、Tags
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # 設為 0 才會下載完整歷史紀錄與所有 Tags
+
+      # 2. 用原生 Git 指令直接將代碼與 Tags 強制推送到 Gitee
+      - name: Mirror Code and Tags to Gitee
+        env:
+          GITEE_USER: ${{ secrets.GITEE_USER }}
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+          GITEE_REPO: ${{ github.event.repository.name }}
+        run: |
+          echo "🚀 開始同步代碼與 Tags 至 Gitee..."
+          # 組合包含 Token 的安全傳輸 URL
+          GITEE_REMOTE_URL="https://${GITEE_USER}:${GITEE_TOKEN}@gitee.com/${GITEE_USER}/${GITEE_REPO}.git"
+          
+          # 強制推送當前分支與所有 Tags
+          git push --force "$GITEE_REMOTE_URL" refs/remotes/origin/*:refs/heads/*
+          git push --tags --force "$GITEE_REMOTE_URL"
+          echo "✅ 代碼與 Tags 同步成功！"
